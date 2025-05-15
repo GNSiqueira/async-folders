@@ -111,8 +111,9 @@ def remove_sync(indice = None):
     """
     Remove uma sincronização
     """
+    lista = config.carregarComputador()
+    
     if indice == None:
-        lista = config.carregarComputador()
         if len(lista) == 0:
             print("Nenhuma sincronização encontrada!")
             return
@@ -126,8 +127,8 @@ def remove_sync(indice = None):
     except ValueError:
         print("Seleção inválida!")
         return
-    
-    if selection < 1 or selection -1 > len(lista): 
+
+    if selection < 1 or selection > len(lista): 
         print("Seleção inválida!")
         return
     
@@ -155,6 +156,7 @@ def sync_now():
         return
     for index, folder in enumerate(folders):
         if sync_folders(folder[0], folder[1], index):
+            folder = config.carregarComputador()[index]
             if sync_folders(folder[1], folder[0], index): 
                 config.salvar(config.estruturaHash(folder[0]), os.path.join(folder[0], ".async", "estrutura.json"))
                 config.salvar(config.estruturaHash(folder[1]), os.path.join(folder[1], ".async", "estrutura.json"))
@@ -164,24 +166,83 @@ def sync_folders(folder1, folder2, indice):
     Sincroniza agora
     """
     
-    # Definição de variáveis
-    pathSync = os.path.join(folder1, ".async", "estrutura.json")
-    pathSync2 = os.path.join(folder2, ".async", "estrutura.json")
-    
+    # Definição de variáveis    
     if not os.path.exists(folder1) or not os.path.exists(folder2): 
-        print("\nPasta 1 nao encontrada!")
+        print("\nPasta nao encontrada!")
+        print("\nProblema ao sincronizar pastas: \n\t" + folder1 + "\n\t" + folder2)
         print("\nSelecione uma das opções abaixo: ")
         print("1 - Apagar essa sincronização")
         print("2 - Apenas preciso conectar meu dispositivo")
+        print("3 - Resincronizar as pastas")
         selection = input("\nSelecione uma opção: ")
         
         if selection == "1":
             remove_sync(indice)
+            return False
         elif selection == "2":
             return False
+        elif selection == "3":
+            if not os.path.exists(folder1):
+                # Verificar se a pasta 2 existe 
+                if not os.path.exists(folder2):
+                    print("Ambas as pastas nao foram encontradas!")
+                    print("Selecione as pastas novamente:")
+                    folder1 = input("Pasta 1: ")
+                    folder2 = input("Pasta 2: ")
+                    
+                    if not os.path.exists(folder1) or not os.path.exists(folder2):
+                        print("Ambas as pastas nao foram encontradas!")
+                        return False
+                    
+                    before = config.carregarComputador()
+                    before[indice] = [folder1, folder2]
+                    config.salvarComputer(before)
+                    config.salvar(config.estruturaHash(folder1), os.path.join(folder1, ".async", "estrutura.json"))
+                    config.salvar(config.estruturaHash(folder2), os.path.join(folder2, ".async", "estrutura.json"))
+                    
+                    return sync_folders(folder1, folder2, indice)
+                
+                else:
+                    print("Pasta 1 nao foi encontrada!")
+                    print("Selecione a pasta novamente:")
+                    folder1 = input("Pasta 1: ") 
+                    
+                    if not os.path.exists(folder1):
+                        print("Pasta nao encontrada!")
+                        return False
+                    
+                    before = config.carregarComputador()
+                    before[indice] = [folder1, folder2]
+                    config.salvarComputer(before)
+                    config.salvar(config.estruturaHash(folder1), os.path.join(folder1, ".async", "estrutura.json"))
+
+                    
+                    return sync_folders(folder1, folder2, indice)
+                    
+                    
+            elif not os.path.exists(folder2):
+                print("Pasta 2 nao foi encontrada!")
+                print("Selecione a pasta novamente:")
+                folder2 = input("Pasta 2: ") 
+                
+                if not os.path.exists(folder2):
+                    print("Pasta nao encontrada!")
+                    return False
+                
+                before = config.carregarComputador()
+                before[indice] = [folder1, folder2]
+                config.salvarComputer(before)
+                config.salvar(config.estruturaHash(folder2), os.path.join(folder2, ".async", "estrutura.json"))
+
+                
+                return sync_folders(folder1, folder2, indice)
+
         else:
             print("Opção inválida!")
             return False
+    
+    pathSync = os.path.join(folder1, ".async", "estrutura.json")
+    pathSync2 = os.path.join(folder2, ".async", "estrutura.json")
     
     if not os.path.exists(pathSync): 
         if os.path.exists(pathSync2):
@@ -194,6 +255,7 @@ def sync_folders(folder1, folder2, indice):
             print("\nUma pasta chamada (.async) nao foi encontrada!\nIremos adicionar a sincronização novamente.\nAdicionar sincronização...")
             add_new_sync(folder1, folder2)
             return True
+        
     elif not os.path.exists(pathSync2):
         Command.remover(folder2)
         os.mkdir(folder2)
@@ -219,11 +281,13 @@ def sync_folders(folder1, folder2, indice):
                         Command.remover(os.path.join(root, file))
                         Command.copiarDimanicamente(folder2, folder1, file2)
                         continue
-                    
-                if root != config.searchPathInAsync(file, pathSync)[1]:
-                    Command.remover(os.path.join(file2))
-                    Command.copiarDimanicamente(folder1, folder2, os.path.join(root, file))
-                
+                infoo = config.searchPathInAsync(file, pathSync)
+                if infoo:
+                    if root != infoo[1]:
+                        Command.remover(os.path.join(file2))
+                        Command.copiarDimanicamente(folder1, folder2, os.path.join(root, file))
+                    continue
+                Command.copiarDimanicamente(folder1, folder2, os.path.join(root, file))
                 continue
             else: 
                 infoFile2 = config.searchPathInAsync(file, pathSync2)
@@ -238,7 +302,7 @@ def sync_folders(folder1, folder2, indice):
                 else: 
                     Command.copiarDimanicamente(folder1, folder2, os.path.join(root, file))
                     continue
-    
+    return True
 
 def auto_sync():
     """
