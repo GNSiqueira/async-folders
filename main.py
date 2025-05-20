@@ -7,6 +7,164 @@ from hash import Hash
 
 config = Persistencia()
 
+
+def ativar_syncs(): 
+    dados = config.carregarComputador()
+    
+    for index, dado in enumerate(dados):
+        resp = validar_existensia(dado)
+        def temp():
+            if not resp is True: 
+                print("\nDeseja ativar essa sincronização?")
+                print(f"\t{dado[0]} \n\t  {dado[1]} \nStatus de Sincronia: {"ON" if dado[2] else "OFF"}")
+                inp = input("Clique no ENTER para não ou digite \"Y\" para ativar: ")
+                if inp.lower() == "y": 
+                    d = config.carregarComputador()
+                    d[index][2] = True
+                    config.salvarComputer(d) 
+                elif inp == "": 
+                    pass
+                else: 
+                    limpar_tela()
+                    print("Resposta não identificada!")
+                    temp()
+        temp()                  
+        
+def add_sync_folder(folder1, folder2, indice): 
+    print("\nPasta nao encontrada!")
+    print("\nProblema ao pesquisar pastas: \n\t" + folder1 + "\n\t" + folder2)
+    print("\nSelecione uma das opções abaixo: ")
+    print("1 - Apagar essa sincronização")
+    print("2 - Apenas preciso conectar meu dispositivo")
+    print("3 - Resincronizar as pastas")
+    print("4 - Apenas continue")
+    print("Clique no ENTER para ignorar essa sincronização.")
+    selection = input("\nSelecione uma opção: ")
+    
+    if selection == "1":
+        remove_sync(indice)
+        return False
+    elif selection == "2":
+        return False
+    elif selection == "3":
+            if not os.path.exists(folder1):
+                if not os.path.exists(folder2):
+                    print("Ambas as pastas nao foram encontradas!")
+                    print("Selecione as pastas novamente:")
+                    folder1 = input("Pasta 1: ")
+                    folder2 = input("Pasta 2: ")
+                    
+                    if not os.path.exists(folder1) and not os.path.exists(folder2):
+                        print("Ambas as pastas nao foram encontradas!")
+                        return False
+                    
+                    before = config.carregarComputador()
+                    before[indice] = [folder1, folder2, True]
+                    config.salvarComputer(before)
+                    config.salvar(config.estruturaHash(folder1), os.path.join(folder1, ".async", "estrutura.json"))
+                    config.salvar(config.estruturaHash(folder2), os.path.join(folder2, ".async", "estrutura.json"))
+                    
+                    return sync_folders(folder1, folder2, indice)
+                
+                else:
+                    print("Pasta 1 nao foi encontrada!")
+                    print("Selecione a pasta novamente:")
+                    folder1 = input("Pasta 1: ") 
+                    
+                    if not os.path.exists(folder1):
+                        print("Pasta nao encontrada!")
+                        return False
+                    
+                    before = config.carregarComputador()
+                    before[indice] = [folder1, folder2, True]
+                    config.salvarComputer(before)
+                    config.salvar(config.estruturaHash(folder1), os.path.join(folder1, ".async", "estrutura.json"))
+
+                    
+                    return sync_folders(folder1, folder2, indice)
+                                
+            elif not os.path.exists(folder2):
+                print("Pasta 2 nao foi encontrada!")
+                print("Selecione a pasta novamente:")
+                folder2 = input("Pasta 2: ") 
+                
+                if not os.path.exists(folder2):
+                    print("Pasta nao encontrada!")
+                    return False
+                
+                before = config.carregarComputador()
+                before[indice] = [folder1, folder2, True]
+                config.salvarComputer(before)
+                config.salvar(config.estruturaHash(folder2), os.path.join(folder2, ".async", "estrutura.json"))
+
+                
+                return sync_folders(folder1, folder2, indice)
+
+            else:
+                print("Opção inválida!")
+                return False
+
+    elif selection == "4": 
+        before = config.carregarComputador()
+        before[indice] = [folder1, folder2, True]
+        config.salvarComputer(before)
+        return True
+
+    else: 
+        before = config.carregarComputador()
+        before[indice] = [folder1, folder2, False]
+        config.salvarComputer(before)
+        return False
+    
+
+def validar_existensias(): 
+    dados = config.carregarComputador()
+    
+    for index, dado in enumerate(dados):
+        dado[2] = True
+        resp = validar_existensia(dado)
+        if resp == 0: 
+            add_sync_folder(dado[0], dado[1], index)
+        if resp == 2:
+            d = config.carregarComputador()
+            d[index][2] = True
+            config.salvarComputer(d) 
+        
+            
+        limpar_tela()
+
+def validar_existensia(dado): 
+    """
+    + Validar se as pastas existem
+        + Se as duas existirem não fazer nada
+        + Se as duas não existirem, perguntar se o usuário deseja adicionar uma nova sincronização, ou apenas ignorar
+            + Caso ele deseje ignorar, alterar os dois ultimos parametros da config para False.
+            + Caso ele deseje adicionar uma nova sincronização, chamar a função add_new_sync com o index para fazer a alteração.
+        + Se apenas a primeira existir perguntar se o usuário deseja adicionar uma nova sincronização, ou apenas ignorar
+            + Caso ele deseje ignorar
+        + Se apenas a segunda existir perguntar se o usuário deseja adicionar uma nova sincronização, ou apenas ignorar
+    
+    return 0 Ele está sendo rastreado mas as pastas não existem
+    return 1 # Nao era para ele estar sendo rastreado
+    return 2 # Era para ele estar sendo rastreado
+    return True # #Está tudo certo
+    
+    """
+    
+    folder1 = dado[0]
+    folder2 = dado[1]
+    folder1Existense = dado[2]
+    
+    if not os.path.exists(folder1) or not os.path.exists(folder2):
+        if folder1Existense == True:
+            return 0 # Ele está sendo rastreado mas as pastas não existem
+        else: 
+            return 1 # Nao era para ele estar sendo rastreado
+    elif folder1Existense == False:
+        return 2 # Era para ele estar sendo rastreado
+        
+    return True # #Está tudo certo
+
 def main(): 
     print("*" * 40)
     print("    📁 MENU DE OPÇÕES - Sync Folders     ")
@@ -16,6 +174,7 @@ def main():
     print("3 - Listar sincronizações")
     print("4 - Sincronizar agora")
     print("5 - Sincronização automática")
+    print("6 - Ativar sincronizações")
     print("0 - Sair ou Ctrl + C")
     print("*" * 40)
     
@@ -59,7 +218,7 @@ def add_new_sync(fold1 = None, fold2 = None):
         
         before = config.carregarComputador()
             
-        new = [primeira_pasta, segunda_pasta]
+        new = [primeira_pasta, segunda_pasta, True]
 
         if new in before or [segunda_pasta, primeira_pasta] in before:
             if os.path.exists(os.path.join(primeira_pasta, ".async")) and os.path.exists(os.path.join(segunda_pasta, ".async")):
@@ -106,7 +265,6 @@ def add_new_sync(fold1 = None, fold2 = None):
         print(f"Erro ao adicionar sincronização: {e}")
         return
                 
-
 def remove_sync(indice = None):
     """
     Remove uma sincronização
@@ -136,16 +294,15 @@ def remove_sync(indice = None):
     config.salvarComputer(lista)
     print("Sincronização removida com sucesso!")
     return
-            
-    
+                
 def list_sync():
     """
     Lista as sincronizações
     """
     for number, sync in  enumerate(config.carregarComputador()):
-        print(f"\nSincronização {number + 1} : {sync[0]} \n\t\t  {sync[1]}")
+        print(f"\nSincronização {number + 1} : {sync[0]} \n\t\t  {sync[1]} \nStatus de Sincronia: {"ON" if sync[2] else "OFF"}")
     print("")
-    
+  
 def sync_now():
     """
     Sincroniza agora
@@ -155,91 +312,30 @@ def sync_now():
         print("Nenhuma sincronização encontrada!")
         return
     for index, folder in enumerate(folders):
-        if sync_folders(folder[0], folder[1], index):
+        resp = validar_existensia(folder)
+        
+        if resp == 0: 
+            if not add_sync_folder(folder[0], folder[1], index): 
+                continue
+        elif resp is True:
+            pass
+        elif resp == 1: 
+            continue
+        elif resp == 2: 
+            d = config.carregarComputador()
+            d[index][2] = True
+            config.salvarComputer(d) 
+            
+        if sync_folders(folder[0], folder[1]):
             folder = config.carregarComputador()[index]
-            if sync_folders(folder[1], folder[0], index): 
+            if sync_folders(folder[1], folder[0]): 
                 config.salvar(config.estruturaHash(folder[0]), os.path.join(folder[0], ".async", "estrutura.json"))
                 config.salvar(config.estruturaHash(folder[1]), os.path.join(folder[1], ".async", "estrutura.json"))
     
-def sync_folders(folder1, folder2, indice):
+def sync_folders(folder1, folder2):
     """
     Sincroniza agora
     """
-    
-    # Definição de variáveis    
-    if not os.path.exists(folder1) or not os.path.exists(folder2): 
-        print("\nPasta nao encontrada!")
-        print("\nProblema ao sincronizar pastas: \n\t" + folder1 + "\n\t" + folder2)
-        print("\nSelecione uma das opções abaixo: ")
-        print("1 - Apagar essa sincronização")
-        print("2 - Apenas preciso conectar meu dispositivo")
-        print("3 - Resincronizar as pastas")
-        selection = input("\nSelecione uma opção: ")
-        
-        if selection == "1":
-            remove_sync(indice)
-            return False
-        elif selection == "2":
-            return False
-        elif selection == "3":
-            if not os.path.exists(folder1):
-                # Verificar se a pasta 2 existe 
-                if not os.path.exists(folder2):
-                    print("Ambas as pastas nao foram encontradas!")
-                    print("Selecione as pastas novamente:")
-                    folder1 = input("Pasta 1: ")
-                    folder2 = input("Pasta 2: ")
-                    
-                    if not os.path.exists(folder1) or not os.path.exists(folder2):
-                        print("Ambas as pastas nao foram encontradas!")
-                        return False
-                    
-                    before = config.carregarComputador()
-                    before[indice] = [folder1, folder2]
-                    config.salvarComputer(before)
-                    config.salvar(config.estruturaHash(folder1), os.path.join(folder1, ".async", "estrutura.json"))
-                    config.salvar(config.estruturaHash(folder2), os.path.join(folder2, ".async", "estrutura.json"))
-                    
-                    return sync_folders(folder1, folder2, indice)
-                
-                else:
-                    print("Pasta 1 nao foi encontrada!")
-                    print("Selecione a pasta novamente:")
-                    folder1 = input("Pasta 1: ") 
-                    
-                    if not os.path.exists(folder1):
-                        print("Pasta nao encontrada!")
-                        return False
-                    
-                    before = config.carregarComputador()
-                    before[indice] = [folder1, folder2]
-                    config.salvarComputer(before)
-                    config.salvar(config.estruturaHash(folder1), os.path.join(folder1, ".async", "estrutura.json"))
-
-                    
-                    return sync_folders(folder1, folder2, indice)
-                    
-                    
-            elif not os.path.exists(folder2):
-                print("Pasta 2 nao foi encontrada!")
-                print("Selecione a pasta novamente:")
-                folder2 = input("Pasta 2: ") 
-                
-                if not os.path.exists(folder2):
-                    print("Pasta nao encontrada!")
-                    return False
-                
-                before = config.carregarComputador()
-                before[indice] = [folder1, folder2]
-                config.salvarComputer(before)
-                config.salvar(config.estruturaHash(folder2), os.path.join(folder2, ".async", "estrutura.json"))
-
-                
-                return sync_folders(folder1, folder2, indice)
-
-        else:
-            print("Opção inválida!")
-            return False
     
     pathSync = os.path.join(folder1, ".async", "estrutura.json")
     pathSync2 = os.path.join(folder2, ".async", "estrutura.json")
@@ -343,6 +439,10 @@ def escolha(opcao):
             print("\nSincronização automática...")
             print("Precione Ctrl + C para cancelar e voltar para o MENU.")
             auto_sync()
+        elif opcao == "6":
+            print("\nAtivar sincronizações de pastas...")
+            print("Precione Ctrl + C para cancelar e voltar para o MENU.")
+            ativar_syncs()
         else:
             print("Opção inválida!")
     except KeyboardInterrupt: 
@@ -355,6 +455,8 @@ def limpar_tela():
 
 def menu():
     try:
+        limpar_tela()
+        validar_existensias()
         while True:
             limpar_tela()
             opcao = main()
